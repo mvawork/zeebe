@@ -40,7 +40,7 @@ class RemoteStreamImplTest {
       new RemoteStreamPusher<>(transport, executor, RemoteStreamMetrics.noop());
 
   private final RemoteStreamImpl<TestSerializableData, TestSerializableData> remoteStream =
-      new RemoteStreamImpl<>(aggregatedStream, pusher, executor);
+      new RemoteStreamImpl<>(aggregatedStream, pusher);
 
   @Test
   void shouldRetryWithAllAvailableRemoteStreams() {

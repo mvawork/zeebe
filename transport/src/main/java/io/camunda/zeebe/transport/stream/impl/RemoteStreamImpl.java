@@ -10,32 +10,24 @@ package io.camunda.zeebe.transport.stream.impl;
 import io.camunda.zeebe.transport.stream.api.RemoteStream;
 import io.camunda.zeebe.transport.stream.impl.ImmutableStreamRegistry.AggregatedRemoteStream;
 import io.camunda.zeebe.transport.stream.impl.ImmutableStreamRegistry.StreamConsumer;
+import io.camunda.zeebe.transport.stream.impl.ImmutableStreamRegistry.StreamId;
 import io.camunda.zeebe.util.buffer.BufferReader;
 import io.camunda.zeebe.util.buffer.BufferWriter;
-import java.util.ArrayList;
 import java.util.Collections;
-import java.util.Iterator;
-import java.util.List;
-import java.util.concurrent.Executor;
-import java.util.concurrent.ThreadLocalRandom;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import java.util.HashSet;
+import java.util.Set;
+import java.util.function.Supplier;
+import java.util.stream.Collectors;
 
 public class RemoteStreamImpl<M extends BufferReader, P extends BufferWriter>
     implements RemoteStream<M, P> {
-
-  private static final Logger LOGGER = LoggerFactory.getLogger(RemoteStreamImpl.class);
   private final AggregatedRemoteStream<M> stream;
   private final RemoteStreamPusher<P> streamer;
-  private final Executor executor;
 
   public RemoteStreamImpl(
-      final AggregatedRemoteStream<M> stream,
-      final RemoteStreamPusher<P> streamer,
-      final Executor executor) {
+      final AggregatedRemoteStream<M> stream, final RemoteStreamPusher<P> streamer) {
     this.stream = stream;
     this.streamer = streamer;
-    this.executor = executor;
   }
 
   @Override
@@ -45,41 +37,33 @@ public class RemoteStreamImpl<M extends BufferReader, P extends BufferWriter>
 
   @Override
   public void push(final P payload, final ErrorHandler<P> errorHandler) {
-    executor.execute(
-        () -> {
-          final List<StreamConsumer<M>> streamConsumers = stream.getStreamConsumers();
-          final var randomClient =
-              streamConsumers.get(ThreadLocalRandom.current().nextInt(streamConsumers.size()));
-          streamer.pushAsync(
-              payload,
-              (error, p) -> {
-                final var consumers = new ArrayList<>(streamConsumers);
-                consumers.remove(randomClient);
-                Collections.shuffle(consumers);
-                new RetryHandler(errorHandler, consumers).retry(error, payload);
-              },
-              randomClient.id());
-        });
+    streamer.pushAsync(payload, errorHandler, new RandomStreamIdSupplier<>(stream));
   }
 
-  private final class RetryHandler {
-    private final Iterator<StreamConsumer<M>> iter;
-    private final ErrorHandler<P> errorHandler;
+  private static final class RandomStreamIdSupplier<M> implements Supplier<StreamId> {
+    private final AggregatedRemoteStream<M> stream;
+    private final Set<StreamId> attempted = new HashSet<>();
 
-    public RetryHandler(
-        final ErrorHandler<P> errorHandler, final List<StreamConsumer<M>> consumers) {
-      this.errorHandler = errorHandler;
-      iter = consumers.iterator();
+    private RandomStreamIdSupplier(AggregatedRemoteStream<M> stream) {
+      this.stream = stream;
     }
 
-    void retry(final Throwable throwable, final P payload) {
-      if (iter.hasNext()) {
-        LOGGER.debug("Failed to push payload {}, retrying with next stream", payload);
-        streamer.pushAsync(payload, this::retry, iter.next().id());
-      } else {
-        LOGGER.debug("Failed to push payload {}, no more streams to retry", payload);
-        errorHandler.handleError(throwable, payload);
+    @Override
+    public StreamId get() {
+      // TODO: might work better if consumers are a set instead of a list
+      final var consumers =
+          stream.getStreamConsumers().stream().map(StreamConsumer::id).collect(Collectors.toList());
+      consumers.removeAll(attempted);
+      Collections.shuffle(consumers);
+
+      if (consumers.isEmpty()) {
+        return null;
       }
+
+      final var streamId = consumers.get(0);
+      attempted.add(streamId);
+
+      return streamId;
     }
   }
 }

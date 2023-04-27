@@ -8,6 +8,7 @@
 package io.camunda.zeebe.transport.stream.impl;
 
 import io.atomix.cluster.MemberId;
+import io.camunda.zeebe.transport.stream.api.NoSuchStreamException;
 import io.camunda.zeebe.transport.stream.api.RemoteStream.ErrorHandler;
 import io.camunda.zeebe.transport.stream.api.RemoteStreamMetrics;
 import io.camunda.zeebe.transport.stream.impl.ImmutableStreamRegistry.StreamId;
@@ -16,6 +17,7 @@ import io.camunda.zeebe.util.buffer.BufferWriter;
 import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Executor;
+import java.util.function.Supplier;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -38,24 +40,36 @@ final class RemoteStreamPusher<P extends BufferWriter> {
     this.executor = Objects.requireNonNull(executor, "must provide an asynchronous executor");
   }
 
+  /**
+   * Pushes the given payload asynchronously to the next stream ID provided by the supplier, until
+   * the supplier returns nothing more.
+   *
+   * <p>The error handler and the stream ID supplier are both guaranteed to be called within the
+   * executor context of this streamer.
+   *
+   * @param payload the payload to push
+   * @param errorHandler the error handler to delegate to on unrecoverable errors
+   * @param streamIdSupplier a stream ID supplier; should return null to stop retrying
+   */
   public void pushAsync(
-      final P payload, final ErrorHandler<P> errorHandler, final StreamId streamId) {
+      final P payload,
+      final ErrorHandler<P> errorHandler,
+      final Supplier<StreamId> streamIdSupplier) {
     Objects.requireNonNull(payload, "must specify a payload");
     Objects.requireNonNull(errorHandler, "must specify a error handler");
+    Objects.requireNonNull(streamIdSupplier, "must specify a stream ID supplier");
 
+    final var handler = new RetryingErrorHandler(errorHandler, streamIdSupplier);
     executor.execute(
-        () -> push(payload, instrumentingErrorHandler(errorHandler, streamId), streamId));
-  }
+        () -> {
+          final var streamId = streamIdSupplier.get();
+          if (streamId == null) {
+            errorHandler.handleError(new NoSuchStreamException(), payload);
+            return;
+          }
 
-  private ErrorHandler<P> instrumentingErrorHandler(
-      final ErrorHandler<P> errorHandler, final StreamId streamId) {
-    return (error, payload) -> {
-      if (error != null) {
-        metrics.pushFailed();
-        LOG.debug("Failed to push {} to stream {}", payload, streamId, error);
-        errorHandler.handleError(error, payload);
-      }
-    };
+          push(payload, handler, streamId);
+        });
   }
 
   private void push(final P payload, final ErrorHandler<P> errorHandler, final StreamId streamId) {
@@ -97,5 +111,30 @@ final class RemoteStreamPusher<P extends BufferWriter> {
      */
     CompletableFuture<Void> send(final PushStreamRequest request, final MemberId receiver)
         throws Exception;
+  }
+
+  private final class RetryingErrorHandler implements ErrorHandler<P> {
+    private final ErrorHandler<P> delegate;
+    private final Supplier<StreamId> targetSupplier;
+
+    private RetryingErrorHandler(
+        final ErrorHandler<P> delegate, final Supplier<StreamId> targetSupplier) {
+      this.delegate = delegate;
+      this.targetSupplier = targetSupplier;
+    }
+
+    @Override
+    public void handleError(final Throwable error, final P data) {
+      LOG.debug("Failed to push {}", data, error);
+
+      final var nextStreamId = targetSupplier.get();
+      if (nextStreamId == null) {
+        metrics.pushFailed();
+        LOG.debug("Exhausted all streams to push {}", data, error);
+        delegate.handleError(error, data);
+      } else {
+        push(data, this, nextStreamId);
+      }
+    }
   }
 }

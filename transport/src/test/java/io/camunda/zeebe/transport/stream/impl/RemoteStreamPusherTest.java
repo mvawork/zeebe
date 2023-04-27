@@ -18,6 +18,7 @@ import io.camunda.zeebe.transport.stream.impl.RemoteStreamPusher.Transport;
 import io.camunda.zeebe.transport.stream.impl.messages.PushStreamRequest;
 import io.camunda.zeebe.util.buffer.BufferWriter;
 import java.util.ArrayList;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
@@ -39,7 +40,7 @@ final class RemoteStreamPusherTest {
     final var errorHandler = new TestErrorHandler();
 
     // when
-    pusher.pushAsync(payload, errorHandler, streamId);
+    pusher.pushAsync(payload, errorHandler, () -> streamId);
 
     // then
     final var sentRequest = transport.message;
@@ -56,10 +57,12 @@ final class RemoteStreamPusherTest {
     final var payload = new Payload(1);
     final var errorHandler = new TestErrorHandler();
     final var failure = new RuntimeException("Sync failure");
+    final var streamIds = new LinkedList<StreamId>();
+    streamIds.add(streamId);
     transport.synchronousException = failure;
 
     // when
-    pusher.pushAsync(payload, errorHandler, streamId);
+    pusher.pushAsync(payload, errorHandler, streamIds::poll);
 
     // then
     assertThat(errorHandler.errors)
@@ -75,10 +78,12 @@ final class RemoteStreamPusherTest {
     final var payload = new Payload(1);
     final var errorHandler = new TestErrorHandler();
     final var failure = new RuntimeException("Async failure");
+    final var streamIds = new LinkedList<StreamId>();
+    streamIds.add(streamId);
     transport.response = CompletableFuture.failedFuture(failure);
 
     // when
-    pusher.pushAsync(payload, errorHandler, streamId);
+    pusher.pushAsync(payload, errorHandler, streamIds::poll);
 
     // then
     assertThat(errorHandler.errors)
@@ -94,7 +99,7 @@ final class RemoteStreamPusherTest {
     final var errorHandler = new TestErrorHandler();
 
     // when - then
-    assertThatCode(() -> pusher.pushAsync(null, errorHandler, streamId))
+    assertThatCode(() -> pusher.pushAsync(null, errorHandler, () -> streamId))
         .isInstanceOf(NullPointerException.class);
   }
 
@@ -104,7 +109,7 @@ final class RemoteStreamPusherTest {
     final var payload = new Payload(1);
 
     // when - then
-    assertThatCode(() -> pusher.pushAsync(payload, null, streamId))
+    assertThatCode(() -> pusher.pushAsync(payload, null, () -> streamId))
         .isInstanceOf(NullPointerException.class);
   }
 
