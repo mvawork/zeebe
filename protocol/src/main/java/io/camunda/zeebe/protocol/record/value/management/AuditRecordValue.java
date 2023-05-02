@@ -17,7 +17,7 @@ package io.camunda.zeebe.protocol.record.value.management;
 
 import io.camunda.zeebe.protocol.record.ImmutableProtocol;
 import io.camunda.zeebe.protocol.record.RecordValue;
-import org.agrona.DirectBuffer;
+import java.nio.ByteBuffer;
 import org.immutables.value.Value;
 
 /** Represents a series of events to be exported for auditing. */
@@ -26,5 +26,5 @@ import org.immutables.value.Value;
 public interface AuditRecordValue extends RecordValue {
 
   /** Returns the list of serialized records to be audited, sequenced. */
-  DirectBuffer events();
+  ByteBuffer getEvents();
 }

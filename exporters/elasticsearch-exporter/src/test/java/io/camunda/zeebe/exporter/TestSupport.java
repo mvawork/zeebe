@@ -76,6 +76,7 @@ final class TestSupport {
       case SIGNAL_SUBSCRIPTION -> config.signalSubscription = value;
       case RESOURCE_DELETION -> config.resourceDeletion = value;
       case COMMAND_DISTRIBUTION -> config.commandDistribution = value;
+      case AUDIT -> config.audit = value;
       default -> throw new IllegalArgumentException(
           "No known indexing configuration option for value type " + valueType);
     }
@@ -106,7 +107,11 @@ final class TestSupport {
    */
   static Stream<ValueType> provideValueTypes() {
     final var excludedValueTypes =
-        EnumSet.of(ValueType.SBE_UNKNOWN, ValueType.NULL_VAL, ValueType.PROCESS_INSTANCE_RESULT);
+        EnumSet.of(
+            ValueType.SBE_UNKNOWN,
+            ValueType.NULL_VAL,
+            ValueType.PROCESS_INSTANCE_RESULT,
+            ValueType.AGGREGATED_CHANGES);
     return EnumSet.complementOf(excludedValueTypes).stream();
   }
 }

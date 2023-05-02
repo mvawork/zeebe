@@ -196,7 +196,7 @@ public final class AuditLogStreamReader implements LogStreamReader {
     next.readMetadata(eventMetadata);
     if (eventMetadata.getRecordType() == RecordType.AUDIT) {
       next.readValue(auditReader);
-      nextAuditEventBuffer.wrap(auditReader.events());
+      nextAuditEventBuffer.wrap(auditReader.getEvents());
       nextAuditEventOffset = 0;
       nextAuditEvent.wrap(nextAuditEventBuffer, 0);
 

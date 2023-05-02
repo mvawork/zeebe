@@ -16,16 +16,19 @@ import io.camunda.zeebe.protocol.record.RecordValue;
 import io.camunda.zeebe.protocol.record.ValueType;
 import io.camunda.zeebe.protocol.record.ValueTypeMapping;
 import io.camunda.zeebe.protocol.record.value.ImmutableCommandDistributionRecordValue;
+import io.camunda.zeebe.util.buffer.BufferUtil;
 import io.github.classgraph.ClassGraph;
 import io.github.classgraph.ClassInfo;
 import io.github.classgraph.ClassInfoList;
 import java.lang.reflect.Field;
+import java.nio.ByteBuffer;
 import java.util.EnumSet;
 import java.util.Objects;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.function.Predicate;
 import java.util.function.UnaryOperator;
 import java.util.stream.Stream;
+import org.agrona.DirectBuffer;
 import org.jeasy.random.EasyRandom;
 import org.jeasy.random.EasyRandomParameters;
 import org.jeasy.random.FieldPredicates;
@@ -221,6 +224,10 @@ public final class ProtocolFactory {
         Long.class, new LongRangeRandomizer(0L, Long.MAX_VALUE, getSeed()));
     randomizerRegistry.registerRandomizer(
         long.class, new LongRangeRandomizer(0L, Long.MAX_VALUE, getSeed()));
+
+    randomizerRegistry.registerRandomizer(DirectBuffer.class, () -> BufferUtil.wrapString("foo"));
+    randomizerRegistry.registerRandomizer(
+        ByteBuffer.class, () -> ByteBuffer.wrap("foo".getBytes()));
 
     // never use NULL_VAL or SBE_UNKNOWN for ValueType or RecordType
     randomizerRegistry.registerRandomizer(

@@ -10,21 +10,34 @@ package io.camunda.zeebe.protocol.impl.record.value.management;
 import io.camunda.zeebe.msgpack.property.BinaryProperty;
 import io.camunda.zeebe.protocol.impl.record.UnifiedRecordValue;
 import io.camunda.zeebe.protocol.record.value.management.AuditRecordValue;
+import java.nio.ByteBuffer;
 import org.agrona.DirectBuffer;
-import org.agrona.concurrent.UnsafeBuffer;
 
 public final class AuditRecord extends UnifiedRecordValue implements AuditRecordValue {
   private static final String EVENTS_KEY = "events";
 
-  private final BinaryProperty events = new BinaryProperty(EVENTS_KEY, new UnsafeBuffer());
+  private final BinaryProperty events = new BinaryProperty(EVENTS_KEY);
 
   public AuditRecord() {
     declareProperty(events);
   }
 
   @Override
-  public DirectBuffer events() {
-    return events.getValue();
+  public ByteBuffer getEvents() {
+    final ByteBuffer bb =
+        events.getValue().byteBuffer() == null
+            ? ByteBuffer.wrap(
+                events.getValue().byteArray(),
+                events.getValue().wrapAdjustment(),
+                events.getValue().capacity())
+            : events
+                .getValue()
+                .byteBuffer()
+                .asReadOnlyBuffer()
+                .position(events.getValue().wrapAdjustment())
+                .limit(events.getValue().wrapAdjustment() + events.getValue().capacity());
+
+    return bb;
   }
 
   public AuditRecord setEvents(DirectBuffer buffer) {

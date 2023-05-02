@@ -43,6 +43,7 @@ import io.camunda.zeebe.protocol.record.intent.SignalSubscriptionIntent;
 import io.camunda.zeebe.protocol.record.intent.TimerIntent;
 import io.camunda.zeebe.protocol.record.intent.VariableDocumentIntent;
 import io.camunda.zeebe.protocol.record.intent.VariableIntent;
+import io.camunda.zeebe.protocol.record.intent.management.AuditIntent;
 import io.camunda.zeebe.protocol.record.intent.management.CheckpointIntent;
 import io.camunda.zeebe.protocol.record.value.CommandDistributionRecordValue;
 import io.camunda.zeebe.protocol.record.value.DecisionEvaluationRecordValue;
@@ -71,6 +72,7 @@ import io.camunda.zeebe.protocol.record.value.VariableRecordValue;
 import io.camunda.zeebe.protocol.record.value.deployment.DecisionRecordValue;
 import io.camunda.zeebe.protocol.record.value.deployment.DecisionRequirementsRecordValue;
 import io.camunda.zeebe.protocol.record.value.deployment.Process;
+import io.camunda.zeebe.protocol.record.value.management.AuditRecordValue;
 import io.camunda.zeebe.protocol.record.value.management.CheckpointRecordValue;
 import java.util.Collections;
 import java.util.EnumMap;
@@ -194,6 +196,7 @@ public final class ValueTypeMapping {
     mapping.put(
         ValueType.COMMAND_DISTRIBUTION,
         new Mapping<>(CommandDistributionRecordValue.class, CommandDistributionIntent.class));
+    mapping.put(ValueType.AUDIT, new Mapping<>(AuditRecordValue.class, AuditIntent.class));
 
     return mapping;
   }
