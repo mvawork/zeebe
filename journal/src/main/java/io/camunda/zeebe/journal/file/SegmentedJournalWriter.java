@@ -100,6 +100,9 @@ final class SegmentedJournalWriter {
     // Truncate down to the current index, such that the last index is `index`, and the next index
     // `index + 1`
     flusher.setLastFlushedIndex(index);
+    // Reset last entry position in descriptor to 0, to ensure that after a restart it is not using
+    // the old truncated entry.
+    currentSegment.resetLastEntryInDescriptor();
     currentWriter.truncate(index);
   }
 
