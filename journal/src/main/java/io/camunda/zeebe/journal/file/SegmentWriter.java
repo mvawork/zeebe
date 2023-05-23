@@ -52,6 +52,7 @@ final class SegmentWriter {
   private final long firstAsqn;
   private long lastAsqn;
   private JournalRecord lastEntry;
+  private int lastEntryPosition;
   private final JournalRecordReaderUtil recordUtil;
   private final ChecksumGenerator checksumGenerator = new ChecksumGenerator();
   private final JournalRecordSerializer serializer = new SBESerializer();
@@ -74,12 +75,17 @@ final class SegmentWriter {
     writeBuffer.wrap(buffer);
     firstAsqn = lastWrittenAsqn + 1;
     lastAsqn = lastWrittenAsqn;
+    lastEntryPosition = segment.descriptor().lastEntryPosition();
     this.metrics = metrics;
     reset(0, false);
   }
 
   long getLastIndex() {
     return lastEntry != null ? lastEntry.index() : segment.index() - 1;
+  }
+
+  int getLastEntryPosition() {
+    return lastEntryPosition;
   }
 
   long getNextIndex() {
@@ -171,6 +177,7 @@ final class SegmentWriter {
     lastEntry = new PersistedJournalRecord(metadata, data);
     updateLastAsqn(lastEntry.asqn());
     index.index(lastEntry, startPosition);
+    lastEntryPosition = startPosition;
   }
 
   private void updateLastAsqn(final long asqn) {
@@ -216,6 +223,7 @@ final class SegmentWriter {
         FrameUtil.readVersion(buffer);
         lastEntry = recordUtil.read(buffer, nextIndex);
         updateLastAsqn(lastEntry.asqn());
+        lastEntryPosition = position;
         nextIndex++;
         this.index.index(lastEntry, position);
         buffer.mark();

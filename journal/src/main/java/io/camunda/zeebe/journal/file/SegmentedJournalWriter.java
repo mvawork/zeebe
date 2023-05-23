@@ -111,6 +111,7 @@ final class SegmentedJournalWriter {
   }
 
   private void createNewSegment() {
+    currentSegment.updateDescriptor();
     currentSegment = segments.getNextSegment();
     currentWriter = currentSegment.writer();
   }
