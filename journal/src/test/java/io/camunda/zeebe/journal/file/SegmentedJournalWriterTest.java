@@ -66,4 +66,22 @@ final class SegmentedJournalWriterTest {
     assertThat(flusher.nextFlushIndex()).isEqualTo(8L);
     assertThat(journalFactory.metaStore().hasLastFlushedIndex()).isFalse();
   }
+
+  @Test
+  void shouldUpdateDescriptor() {
+    // given
+    while (segments.getFirstSegment() == segments.getLastSegment()) {
+      writer.append(-1, journalFactory.entry());
+    }
+
+    // when
+    segments.close();
+    segments.open();
+
+    // then
+    final var lastIndexInFirstSegment = segments.getLastSegment().index() - 1;
+    final SegmentDescriptor descriptor = segments.getFirstSegment().descriptor();
+    assertThat(descriptor.lastIndex()).isEqualTo(lastIndexInFirstSegment);
+    assertThat(descriptor.lastPosition()).isNotZero();
+  }
 }
