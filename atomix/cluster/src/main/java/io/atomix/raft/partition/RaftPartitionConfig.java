@@ -21,7 +21,7 @@ import java.time.Duration;
 /** Configurations for a single partition. */
 public class RaftPartitionConfig {
 
-  private static final Duration DEFAULT_ELECTION_TIMEOUT = Duration.ofMillis(2500);
+  private static final Duration DEFAULT_ELECTION_TIMEOUT = Duration.ofMillis(10000);
   private static final Duration DEFAULT_INSTALL_REQUEST_TIMEOUT = Duration.ofSeconds(10);
   private static final Duration DEFAULT_HEARTBEAT_INTERVAL = Duration.ofMillis(250);
   private static final boolean DEFAULT_PRIORITY_ELECTION = true;

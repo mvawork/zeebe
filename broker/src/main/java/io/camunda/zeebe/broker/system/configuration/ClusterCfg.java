@@ -26,7 +26,7 @@ public final class ClusterCfg implements ConfigurationEntry {
   public static final int DEFAULT_REPLICATION_FACTOR = 1;
   public static final int DEFAULT_CLUSTER_SIZE = 1;
   public static final String DEFAULT_CLUSTER_NAME = "zeebe-cluster";
-  public static final Duration DEFAULT_ELECTION_TIMEOUT = Duration.ofMillis(2500);
+  public static final Duration DEFAULT_ELECTION_TIMEOUT = Duration.ofMillis(10000);
 
   private static final String NODE_ID_ERROR_MSG =
       "Node id %s needs to be non negative and smaller then cluster size %s.";
