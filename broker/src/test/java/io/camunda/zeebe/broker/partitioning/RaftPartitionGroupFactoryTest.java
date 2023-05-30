@@ -67,6 +67,19 @@ final class RaftPartitionGroupFactoryTest {
   }
 
   @Test
+  void shouldSetRaftInstallRequestTimeout() {
+    // given
+    final Duration expected = Duration.ofSeconds(15);
+    brokerCfg.getExperimental().getRaft().setInstallRequestTimeout(expected);
+
+    // when
+    final var config = buildRaftPartitionGroup();
+
+    // then
+    assertThat(config.getPartitionConfig().getInstallRequestTimeout()).isEqualTo(expected);
+  }
+
+  @Test
   void shouldSetRaftMaxQuorumResponseTimeout() {
     // given
     final Duration expected = Duration.ofSeconds(13);

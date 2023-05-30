@@ -50,18 +50,21 @@ public class RaftServerCommunicator implements RaftServerProtocol {
   private final String partitionName;
   private final RaftRequestMetrics metrics;
   private final Duration requestTimeout;
+  private final Duration installRequestTimeout;
 
   public RaftServerCommunicator(
       final String prefix,
       final Serializer serializer,
       final ClusterCommunicationService clusterCommunicator,
-      final Duration requestTimeout) {
+      final Duration requestTimeout,
+      final Duration installRequestTimeout) {
     context = new RaftMessageContext(prefix);
     partitionName = prefix;
     this.serializer = Preconditions.checkNotNull(serializer, "serializer cannot be null");
     this.clusterCommunicator =
         Preconditions.checkNotNull(clusterCommunicator, "clusterCommunicator cannot be null");
     this.requestTimeout = requestTimeout;
+    this.installRequestTimeout = installRequestTimeout;
     metrics = new RaftRequestMetrics(partitionName);
   }
 
@@ -80,7 +83,7 @@ public class RaftServerCommunicator implements RaftServerProtocol {
   @Override
   public CompletableFuture<InstallResponse> install(
       final MemberId memberId, final InstallRequest request) {
-    return sendAndReceive(context.installSubject, request, memberId);
+    return sendAndReceive(context.installSubject, request, memberId, installRequestTimeout);
   }
 
   @Override
@@ -220,6 +223,18 @@ public class RaftServerCommunicator implements RaftServerProtocol {
         serializer::decode,
         MemberId.from(memberId.id()),
         requestTimeout);
+  }
+
+  private <T, U> CompletableFuture<InstallResponse> sendAndReceive(
+      final String subject, final T request, final MemberId memberId, final Duration installRequestTimeout) {
+    metrics.sendMessage(memberId.id(), request.getClass().getSimpleName());
+    return clusterCommunicator.send(
+        subject,
+        request,
+        serializer::encode,
+        serializer::decode,
+        MemberId.from(memberId.id()),
+        installRequestTimeout);
   }
 
   private <T extends RaftMessage> T recordReceivedMetrics(final T m) {

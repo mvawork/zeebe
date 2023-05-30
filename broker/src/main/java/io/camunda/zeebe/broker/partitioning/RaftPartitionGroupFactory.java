@@ -82,6 +82,7 @@ public final class RaftPartitionGroupFactory {
             .withElectionTimeout(clusterCfg.getElectionTimeout())
             .withHeartbeatInterval(clusterCfg.getHeartbeatInterval())
             .withRequestTimeout(experimentalCfg.getRaft().getRequestTimeout())
+            .withInstallRequestTimeout(experimentalCfg.getRaft().getInstallRequestTimeout())
             .withMaxQuorumResponseTimeout(experimentalCfg.getRaft().getMaxQuorumResponseTimeout())
             .withMinStepDownFailureCount(experimentalCfg.getRaft().getMinStepDownFailureCount())
             .withPreferSnapshotReplicationThreshold(

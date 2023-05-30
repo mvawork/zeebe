@@ -416,6 +416,17 @@ public final class RaftPartitionGroup implements ManagedPartitionGroup {
     }
 
     /**
+     * Sets the install request timeout for all messages sent between raft replicas.
+     *
+     * @param installRequestTimeout the timeout
+     * @return the Raft Partition group builder
+     */
+    public Builder withInstallRequestTimeout(final Duration installRequestTimeout) {
+      config.getPartitionConfig().setInstallRequestTimeout(installRequestTimeout);
+      return this;
+    }
+
+    /**
      * If the leader is not able to reach the quorum, the leader may step down. This is triggered
      * after minStepDownFailureCount number of requests fails to get a response from the quorum of
      * followers as well as if the last response was received before maxQuorumResponseTime.
