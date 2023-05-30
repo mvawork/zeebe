@@ -13,7 +13,7 @@ import java.time.Duration;
 
 public final class ExperimentalRaftCfg implements ConfigurationEntry {
 
-  public static final Duration DEFAULT_SNAPSHOT_REQUEST_TIMEOUT = Duration.ofMillis(10000);
+  public static final Duration DEFAULT_SNAPSHOT_REQUEST_TIMEOUT = Duration.ofMillis(20000);
   // Requests should time out faster than the election timeout to ensure that a single missed
   // heartbeat does not cause immediate re-election.
   private static final Duration DEFAULT_REQUEST_TIMEOUT = DEFAULT_ELECTION_TIMEOUT;
