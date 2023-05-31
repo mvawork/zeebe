@@ -328,6 +328,23 @@ jobs:
           # fixed to avoid triggering false positive; see https://github.com/golangci/golangci-lint-action/issues/535
           version: v1.52.2
           working-directory: clients/go
+      - name: Prepare Snyk arguments
+        id: info
+        uses: ./.github/actions/prepare-snyk
+        with:
+          name: github.com/camunda/zeebe/clients/go
+      - name: Snyk test
+        uses: snyk/actions/maven@master
+        continue-on-error: true # ensure Sarif is always uploaded
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+        with:
+          command: test
+          args: --sarif-file-output=snyk.sarif --file=clients/go/go.mod ${{ steps.info.outputs.args }}
+      - name: Upload Snyk results to GitHub Code Scanning
+        uses: github/codeql-action/upload-sarif@v2
+        with:
+          sarif_file: snyk.sarif
   java-checks:
     name: Java checks
     runs-on: ubuntu-latest
@@ -341,6 +358,42 @@ jobs:
           secret_vault_address: ${{ secrets.VAULT_ADDR }}
           secret_vault_roleId: ${{ secrets.VAULT_ROLE_ID }}
       - run: ./mvnw -T1C -B -D skipTests -P !autoFormat,checkFormat,spotbugs verify
+  snyk-java:
+    name: Java Vulnerability Checks
+    runs-on: [ self-hosted, linux, amd64, "8" ]
+    strategy:
+      fail-fast: false
+      matrix:
+        project: [ bom, bpmn-model, clients/java, dist, exporter-api, gateway-protocol-impl, protocol ]
+    steps:
+      - uses: actions/checkout@v3
+      - uses: ./.github/actions/setup-zeebe
+        with:
+          go: false
+          secret_vault_secretId: ${{ secrets.VAULT_SECRET_ID }}
+          secret_vault_address: ${{ secrets.VAULT_ADDR }}
+          secret_vault_roleId: ${{ secrets.VAULT_ROLE_ID }}
+      - name: Prepare Snyk arguments
+        id: info
+        uses: ./.github/actions/prepare-snyk
+        with:
+          name: ${{ matrix.project }}
+      - name: Snyk test
+        uses: snyk/actions/maven@master
+        continue-on-error: true # ensure Sarif is always uploaded
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+        with:
+          command: test
+          args: >
+            --sarif-file-output=/snyk.sarif
+            --maven-aggregate
+            --file=${{ matrix.project }}/pom.xml
+            ${{ steps.info.outputs.args }}
+      - name: Upload Snyk results to GitHub Code Scanning
+        uses: github/codeql-action/upload-sarif@v2
+        with:
+          sarif_file: snyk.sarif
   docker-checks:
     name: Docker checks
     runs-on: ubuntu-latest
@@ -391,6 +444,25 @@ jobs:
           revision: ${{ github.sha }}
           version: ${{ steps.build-docker.outputs.version }}
           platforms: ${{ env.DOCKER_PLATFORMS }}
+      - name: Prepare Snyk arguments
+        id: info
+        uses: ./.github/actions/prepare-snyk
+        with:
+          name: ${{ env.LOCAL_DOCKER_IMAGE }}
+      - name: Snyk test
+        uses: snyk/actions/docker@master
+        continue-on-error: true # ensure Sarif is always uploaded
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+        with:
+          command: test
+          sarif: true
+          image: ${{ env.LOCAL_DOCKER_IMAGE }}
+          args: --file=Dockerfile ${{ steps.info.outputs.args }}
+      - name: Upload Snyk results to GitHub Code Scanning
+        uses: github/codeql-action/upload-sarif@v2
+        with:
+          sarif_file: snyk.sarif
   test-summary:
     # Used by bors to check all tests, including the unit test matrix.
     # New test jobs must be added to the `needs` lists!
@@ -407,6 +479,7 @@ jobs:
       - java-checks
       - go-lint
       - docker-checks
+      - snyk-java
     steps:
       - run: exit 0
   event_file:
