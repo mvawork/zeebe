@@ -383,7 +383,7 @@ jobs:
         with:
           command: test
           args: >
-            --sarif-file-output=/snyk.sarif
+            --sarif-file-output=snyk.sarif
             --maven-aggregate
             --file=${{ matrix.project }}/pom.xml
             ${{ steps.info.outputs.args }}
