@@ -1,0 +1,63 @@
+# A reusable action to prepare common Snyk CLI arguments such as the target reference, project name,
+# version, tags, etc. Assumes the code is already checked out and Zeebe build dependencies set up,
+# including Go, Java, and Docker
+
+---
+name: Prepare Snyk Args
+description: Prepares common Snyk arguments from the POM files found in the working directory
+
+inputs:
+  name:
+    description: Sets the Snyk project name
+    required: true
+  target:
+    description: Allows overriding the project target reference directly
+    required: false
+  image:
+    description: Sets the Docker image name to scan
+    required: false
+    default: "camunda/zeebe:current-test"
+  command:
+    description: The Snyk command to run, e.g. monitor, test
+    required: false
+    default: "test"
+
+outputs:
+  args:
+    description: Space separated list of CLI arguments for the Snyk test or monitor command
+    value: ${{ steps.info.outputs.result }}
+
+runs:
+  using: composite
+  steps:
+    - name: Fetch project information
+      id: info
+      shell: bash
+      run: |
+        export TARGET=$([[ ! -z '${{ inputs.target }}' ]] && echo '${{ inputs.target }}' || git rev-parse --abbrev-ref HEAD)
+        export NAME='${{ inputs.name }}'
+        export VERSION=$([[ ! -z '${{ inputs.version }}' ]] && echo '${{ inputs.version }}' || mvn -q -Dexec.executable=echo -Dexec.args='${project.version}' --non-recursive exec:exec 2>/dev/null)
+        export VERSION_TAG=$([[ "${VERSION}" == *-SNAPSHOT ]] && echo 'development' || echo "${VERSION}")
+        export LIFECYCLE=$([[ "${VERSION}" == *-SNAPSHOT ]] && echo 'development' || echo 'production')
+        echo "result=" \
+          "--sarif-file-output=sarif-results/${NAME}.sarif" \
+          "--show-vulnerable-paths=all" \
+          "--severity-threshold=high" \
+          "--org=team-zeebe" \
+          "--project-lifecycle=${LIFECYCLE}" \
+          "--project-tags=version=${VERSION_TAG}" \
+          "--target-reference=${TARGET}" >> $GITHUB_OUTPUT
+    - name: Install Snyk CLI
+      uses: snyk/actions/setup@master
+    - name: Run Snyk on artifacts
+      continue-on-error: true # ensure Sarif is always uploaded
+      shell: bash
+      env:
+        SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+      run: |
+        snyk ${{ inputs.command }} --file=clients/go/go.mod --project-name=clients/go ${{ steps.info.outputs.args }}
+        export JAVA_PROJECTS="bom bpmn-model clients/java dist exporter-api gateway-protocol-impl protocol"
+        for project in "$JAVA_PROJECTS"; do
+          snyk ${{ inputs.command }} --file=${project}/pom.xml --project-name=${project} ${{ steps.info.output.args }}
+        done
+        snyk container ${{ inputs.command }} ${{ inputs.image }} --file=Dockerfile --project-name=camunda/zeebe ${{ steps.info.output.args }}
