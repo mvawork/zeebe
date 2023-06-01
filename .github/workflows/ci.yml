@@ -360,7 +360,7 @@ jobs:
       - run: ./mvnw -T1C -B -D skipTests -P !autoFormat,checkFormat,spotbugs verify
   snyk-java:
     name: Java Vulnerability Checks
-    runs-on: [ self-hosted, linux, amd64, "8" ]
+    runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
@@ -370,9 +370,6 @@ jobs:
       - uses: ./.github/actions/setup-zeebe
         with:
           go: false
-          secret_vault_secretId: ${{ secrets.VAULT_SECRET_ID }}
-          secret_vault_address: ${{ secrets.VAULT_ADDR }}
-          secret_vault_roleId: ${{ secrets.VAULT_ROLE_ID }}
       - name: Prepare Snyk arguments
         id: info
         uses: ./.github/actions/prepare-snyk
