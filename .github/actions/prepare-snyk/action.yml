@@ -30,11 +30,10 @@ runs:
         export VERSION=$([[ ! -z '${{ inputs.version }}' ]] && echo '${{ inputs.version }}' || mvn -q -Dexec.executable=echo -Dexec.args='${project.version}' --non-recursive exec:exec 2>/dev/null)
         export VERSION_TAG=$([[ "${VERSION}" == *-SNAPSHOT ]] && echo 'development' || echo "${VERSION}")
         export LIFECYCLE=$([[ "${VERSION}" == *-SNAPSHOT ]] && echo 'development' || echo 'production')
-        echo "result=\"" \
+        echo "result=" \
           "--severity-threshold=high" \
           "--org=team-zeebe" \
           "--project-lifecycle=${LIFECYCLE}" \
           "--project-name=${NAME}" \
           "--project-tags=version=${VERSION_TAG}" \
-          "--target-reference=${TARGET}" \
-          "\"" >> $GITHUB_OUTPUT
+          "--target-reference=${TARGET}" >> $GITHUB_OUTPUT
